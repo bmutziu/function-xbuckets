@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -10,13 +11,12 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+
 	fnv1beta1 "github.com/crossplane/function-sdk-go/proto/v1beta1"
 	"github.com/crossplane/function-sdk-go/resource"
-	"github.com/crossplane/function-sdk-go/response"
 )
 
 func TestRunFunction(t *testing.T) {
-
 	type args struct {
 		ctx context.Context
 		req *fnv1beta1.RunFunctionRequest
@@ -31,25 +31,65 @@ func TestRunFunction(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"ResponseIsReturned": {
-			reason: "The Function should return a fatal result if no input was specified",
+		"AddTwoBuckets": {
+			reason: "The Function should add two buckets to the desired composed resources",
 			args: args{
 				req: &fnv1beta1.RunFunctionRequest{
-					Meta: &fnv1beta1.RequestMeta{Tag: "hello"},
-					Input: resource.MustStructJSON(`{
-						"apiVersion": "template.fn.crossplane.io/v1beta1",
-						"kind": "Input",
-						"example": "Hello, world"
-					}`),
+					Observed: &fnv1beta1.State{
+						Composite: &fnv1beta1.Resource{
+							// MustStructJSON is a handy way to provide mock
+							// resources.
+							Resource: resource.MustStructJSON(`{
+								"apiVersion": "example.crossplane.io/v1alpha1",
+								"kind": "XBuckets",
+								"metadata": {
+									"name": "test"
+								},
+								"spec": {
+									"region": "us-east-2",
+									"names": [
+										"test-bucket-a",
+										"test-bucket-b"
+									]
+								}
+							}`),
+						},
+					},
 				},
 			},
 			want: want{
 				rsp: &fnv1beta1.RunFunctionResponse{
-					Meta: &fnv1beta1.ResponseMeta{Tag: "hello", Ttl: durationpb.New(response.DefaultTTL)},
-					Results: []*fnv1beta1.Result{
-						{
-							Severity: fnv1beta1.Severity_SEVERITY_NORMAL,
-							Message:  "I was run with input \"Hello, world\"!",
+					Meta: &fnv1beta1.ResponseMeta{Ttl: durationpb.New(60 * time.Second)},
+					Desired: &fnv1beta1.State{
+						Resources: map[string]*fnv1beta1.Resource{
+							"xbuckets-test-bucket-a": {Resource: resource.MustStructJSON(`{
+								"apiVersion": "s3.aws.upbound.io/v1beta1",
+								"kind": "Bucket",
+								"metadata": {
+									"annotations": {
+										"crossplane.io/external-name": "test-bucket-a"
+									}
+								},
+								"spec": {
+									"forProvider": {
+										"region": "us-east-2"
+									}
+								}
+							}`)},
+							"xbuckets-test-bucket-b": {Resource: resource.MustStructJSON(`{
+								"apiVersion": "s3.aws.upbound.io/v1beta1",
+								"kind": "Bucket",
+								"metadata": {
+									"annotations": {
+										"crossplane.io/external-name": "test-bucket-b"
+									}
+								},
+								"spec": {
+									"forProvider": {
+										"region": "us-east-2"
+									}
+								}
+							}`)},
 						},
 					},
 				},
