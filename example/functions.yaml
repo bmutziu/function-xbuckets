@@ -1,11 +1,10 @@
----
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
   name: function-xbuckets
   annotations:
-    # This tells crossplane beta render to connect to the function locally.
     render.crossplane.io/runtime: Development
 spec:
-  # This is ignored when using the Development runtime.
-  package: function-xbuckets
+  # The CLI ignores this package when using the Development runtime.
+  # You can set it to any value.
+  package: xpkg.upbound.io/bmutziu/function-xbuckets:v0.1.0
