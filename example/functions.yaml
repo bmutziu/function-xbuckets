@@ -3,7 +3,7 @@ kind: Function
 metadata:
   name: function-xbuckets
   annotations:
-    render.crossplane.io/runtime: Development
+    render.crossplane.io/runtime: Docker
 spec:
   # The CLI ignores this package when using the Development runtime.
   # You can set it to any value.
